@@ -149,3 +149,5 @@ replay_pid*
 /.idea/vcs.xml
 /.idea/copilot.data.migration.agent.xml
 /.idea/copilot.data.migration.edit.xml
+
+target/

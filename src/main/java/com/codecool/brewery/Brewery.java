@@ -1,10 +1,9 @@
 package com.codecool.brewery;
 
 import java.time.DayOfWeek;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
+import java.time.LocalDate;
+import java.time.temporal.ChronoUnit;
+import java.util.*;
 import java.util.stream.Collectors;
 
 /**
@@ -14,17 +13,39 @@ import java.util.stream.Collectors;
 class Brewery {
     String name;
     List<Brewer> brewers;
+    List<Beer> beerStock;
 
-    Brewery(String name) {}
-
-    void addBrewer() {
-        // TODO: Implement proper null checking and validation
-        // TODO: add brewer to brewers list
+    Brewery(String name) {
+        this.name = name;
+        this.brewers = new ArrayList<>();
+        this.beerStock = new ArrayList<>();
     }
 
-    void addBeerToStock() {
+    void addBrewer(Brewer brewer) {
+        // TODO: Implement proper null checking and validation
+        // TODO: add brewer to brewers list
+        if (brewer == null) {
+            throw new IllegalArgumentException("Brewer cannot be null");
+        }
+        if (brewers.contains(brewer)) {
+            throw new IllegalStateException("Brewer already exists in the brewery");
+        }
+        if (brewer instanceof MasterBrewer) {
+            boolean hasMaster = brewers.stream().anyMatch(b -> b instanceof MasterBrewer);
+            if(hasMaster) {
+                throw new IllegalStateException("Brewery already has MasterBrewer");
+            }
+        }
+        brewers.add(brewer);
+    }
+
+    void addBeerToStock(Beer beer) {
         // TODO: Implement proper null checking and validation
         // TODO: add beer to stock
+        if (beer == null) {
+            throw new IllegalArgumentException("beer cannot be null");
+        }
+        beerStock.add(beer);
     }
 
     /**
@@ -34,8 +55,26 @@ class Brewery {
      * - What happens if there's not enough quantity?
      * - Should this modify the stock?
      */
-    void retrieveBeerFromStock() {
+    void retrieveBeerFromStock(String beerName, int quantity) {
         // TODO: Implement
+        if (beerName == null || quantity <= 0) {
+            throw new IllegalArgumentException("Invalid beer name or quantity");
+        }
+        List<Beer> matchingBeers = beerStock.stream()
+                .filter(b -> b.getName().equalsIgnoreCase(beerName))
+                .toList();
+
+        if(matchingBeers.isEmpty()) {
+            throw new NoSuchElementException("Beer not found: " + beerName);
+        }
+
+        if(matchingBeers.size() < quantity) {
+            throw new IllegalStateException("Requested: " + quantity + "stock of: " + beerName + ", but only found: " + matchingBeers.size());
+        }
+
+        for (int i = 0; i < quantity; i++) {
+            beerStock.remove(matchingBeers.get(i));
+        }
     }
 
     /**
@@ -46,9 +85,22 @@ class Brewery {
      * - Count available helpers on each specified day
      * - Return the sum of helper counts across all days
      */
-    public int calculateProductionCapacity(List<DayOfWeek> days) {
+    public int calculateProductionCapacity(List<String> dayNames) {
         // TODO: Implement
-        return 0;
+        List<DayOfWeek> days = dayNames.stream().map(this::parseDayOfWeek).toList();
+        boolean hasMasterBrewer = brewers.stream()
+                .anyMatch(brewer -> brewer instanceof MasterBrewer);
+
+        if (!hasMasterBrewer) {
+            return 0;
+        }
+
+        int totalCapacity = 0;
+        for (DayOfWeek day : days) {
+            totalCapacity += countAvailableHelpers(day);
+        }
+
+        return totalCapacity;
     }
 
     /**
@@ -59,7 +111,11 @@ class Brewery {
      */
     public List<String> findMaturedBeers() {
         // TODO: Implement
-        return null;
+        LocalDate today = LocalDate.now();
+        return beerStock.stream()
+                .filter(beer -> ChronoUnit.DAYS.between(beer.getProductionDate(), today) > 180)
+                .map(Beer::getName)
+                .toList();
     }
 
     /**
@@ -138,6 +194,9 @@ class Brewery {
      */
     // TODO: Implement countAvailableHelpers method
     private int countAvailableHelpers(DayOfWeek day) {
-        return 0;
+        return (int) brewers.stream()
+                .filter(brewer -> brewer instanceof HelperBrewer)
+                .filter(helper -> helper.isAvailableOn(day))
+                .count();
     }
 }
